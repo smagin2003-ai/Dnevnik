@@ -341,12 +341,26 @@ const BRISTOL = [
 ];
 
 const FACTORS = [
-  "Плохой сон", "Новый продукт", "Алкоголь", "НПВС/антибиотики",
+  "Плохой сон", "Ночное дежурство", "Алкоголь", "НПВС/антибиотики",
   "Физ. нагрузка", "Жара/перегрев", "Холод", "Жирная/острая пища",
   "Глютен", "Молочные продукты", "Высокий FODMAP (бобовые, капуста)",
   "Кофеин", "Газировка/подсластители", "Новая косметика/химия",
-  "Простуда/ОРВИ", "Пропуск приёма пищи", "Смена часового пояса/перелёт",
-  "Тесная одежда/трение",
+  "Простуда/ОРВИ", "Пропуск приёма пищи", "Поллиноз (сезонная аллергия)",
+];
+
+const POLLEN_CALENDAR = [
+  { month: "Январь", allergens: "Пыление обычно отсутствует", active: false },
+  { month: "Февраль", allergens: "Ольха, лещина (орешник)", active: true },
+  { month: "Март", allergens: "Ольха, лещина, кипарис, можжевельник", active: true },
+  { month: "Апрель", allergens: "Берёза, дуб, вяз, ясень, тополь", active: true },
+  { month: "Май", allergens: "Злаковые травы (начало), сосна, ель, акация", active: true },
+  { month: "Июнь", allergens: "Злаковые травы (пик), липа", active: true },
+  { month: "Июль", allergens: "Злаковые травы, подсолнечник", active: true },
+  { month: "Август", allergens: "Амброзия (начало), полынь, лебеда", active: true },
+  { month: "Сентябрь", allergens: "Амброзия (пик), полынь", active: true },
+  { month: "Октябрь", allergens: "Амброзия (окончание), сорные травы", active: true },
+  { month: "Ноябрь", allergens: "Пыление обычно отсутствует", active: false },
+  { month: "Декабрь", allergens: "Пыление обычно отсутствует", active: false },
 ];
 
 const STORAGE_KEY = "trigger-diary-days-v2";
@@ -451,6 +465,7 @@ const primaryBtn = { display:"inline-flex", alignItems:"center", gap:6, backgrou
 const secondaryBtn = { display:"inline-flex", alignItems:"center", gap:6, background:"white", color:INK, border:"1px solid "+LINE, borderRadius:9, padding:"9px 15px", fontSize:13.5, fontWeight:500, cursor:"pointer" };
 const iconBtn = { background:"transparent", border:"1px solid "+LINE, borderRadius:6, padding:"4px 6px", cursor:"pointer", color:MUTED };
 const logRow = { border:"1px solid "+LINE, borderRadius:10, padding:"12px 14px", background:"#FFFEFB" };
+const counterBtn = { width:36, height:36, borderRadius:9, border:"1px solid "+LINE, background:"white", color:INK, fontSize:18, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" };
 
 function TriggerDiary(){
   const [days, setDays] = useState({});
@@ -461,6 +476,9 @@ function TriggerDiary(){
   const [foodText, setFoodText] = useState("");
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
+  const [pollenExpanded, setPollenExpanded] = useState(false);
+  const currentMonthIdx = new Date().getMonth();
+  const currentPollen = POLLEN_CALENDAR[currentMonthIdx];
 
   useEffect(() => {
     const d = loadDays();
@@ -585,6 +603,28 @@ function TriggerDiary(){
         </header>
 
         <section style=${cardStyle}>
+          <div style=${{display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap"}}>
+            <div>
+              <h2 style=${h2Style}>Сезон пыления (справочно)</h2>
+              <p style=${{fontSize:13, color:MUTED, margin:"6px 0 0"}}>
+                ${currentPollen.month + ": "}<b style=${{color: currentPollen.active ? ALLERGY : INK}}>${currentPollen.allergens}</b>
+              </p>
+            </div>
+            <button type="button" onClick=${()=>setPollenExpanded(x=>!x)} style=${secondaryBtn}>${pollenExpanded ? "Свернуть" : "Календарь на год"}</button>
+          </div>
+          ${pollenExpanded ? html`
+            <div style=${{marginTop:14, display:"flex", flexDirection:"column", gap:4}}>
+              ${POLLEN_CALENDAR.map((p,i) => html`
+                <div key=${i} style=${{display:"flex", gap:10, fontSize:12.5, padding:"4px 0", borderBottom: i<11 ? "1px solid "+LINE : "none", color: i===currentMonthIdx ? INK : MUTED, fontWeight: i===currentMonthIdx ? 600 : 400}}>
+                  <span style=${{width:90, flexShrink:0}}>${p.month}${i===currentMonthIdx ? " ←" : ""}</span>
+                  <span>${p.allergens}</span>
+                </div>
+              `)}
+            </div>
+          ` : null}
+        </section>
+
+        <section style=${cardStyle}>
           <div style=${{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8}}>
             <h2 style=${h2Style}>${(isExisting ? "Запись за " : "Новая запись за ") + fmtDateHuman(form.date)}</h2>
             <input type="date" value=${form.date} max=${todayStr()} onChange=${e=>selectDate(e.target.value)} style=${Object.assign({}, inputStyle, {width:"auto"})} />
@@ -618,7 +658,11 @@ function TriggerDiary(){
 
           <div style=${{display:"grid", gridTemplateColumns:"1fr 2fr", gap:16}}>
             <${Field} label="Стул: сколько раз за день">
-              <input type="number" min="0" max="30" value=${form.stoolCount} onChange=${e=>updateForm({stoolCount: Math.max(0, Number(e.target.value))})} style=${inputStyle} />
+              <div style=${{display:"flex", alignItems:"center", gap:10}}>
+                <button type="button" onClick=${()=>updateForm({stoolCount: Math.max(0, form.stoolCount - 1)})} style=${counterBtn}>−</button>
+                <span style=${{fontFamily:"'JetBrains Mono', monospace", fontSize:20, fontWeight:600, minWidth:28, textAlign:"center"}}>${form.stoolCount}</span>
+                <button type="button" onClick=${()=>updateForm({stoolCount: Math.min(30, form.stoolCount + 1)})} style=${counterBtn}>+</button>
+              </div>
             <//>
             <${Field} label="Характер стула (можно несколько типов)">
               <div style=${{display:"flex", gap:6, flexWrap:"wrap"}}>
